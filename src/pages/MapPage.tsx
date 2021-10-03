@@ -1,38 +1,30 @@
-import React, { FC, useEffect, useRef, useState } from 'react';
-import mapboxgl, { Map } from 'mapbox-gl';
+import React, { FC } from 'react';
+import useMapbox from '../hooks/useMapbox';
 
-mapboxgl.accessToken = process.env.REACT_APP_TOKEN_MAPBOX || '';
+type Coords = {
+    lng: string;
+    lat: string;
+    zoom: string;
+};
 
-const initialPoint = {
-    lng: 5,
-    lat: 34,
-    zoom: 2
+const initialPoint: Coords = {
+    lng: '5',
+    lat: '34',
+    zoom: '2'
 };
 
 const MapPage: FC = () => {
 
-    const mapDiv = useRef<HTMLDivElement>(null);
-
-    const [, setsMap] = useState<Map>()
-
-    useEffect(() => {
-        
-        const map = new mapboxgl.Map({
-            container: mapDiv.current || '',
-            style: 'mapbox://styles/mapbox/streets-v11',
-            center: [ initialPoint.lng, initialPoint.lat ],
-            zoom: initialPoint.zoom
-        });
-
-        setsMap(map);
-
-    }, []);
-
+    
+    const { setRef, coords } = useMapbox(initialPoint);
 
     return (
         <>
+            <div className="info">
+                lng: { coords.lng } | lat: { coords.lat } | zoom: { coords.zoom }
+            </div>
             <div 
-                ref={ mapDiv }
+                ref={ setRef }
                 className="mapContainer"
             />
         </>
