@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import mapboxgl, { LngLat, Map } from 'mapbox-gl';
+import mapboxgl, { LngLat, Map, Marker } from 'mapbox-gl';
+import { v4 as uuid} from 'uuid'
+import { Subject } from 'rxjs';
 
 mapboxgl.accessToken = process.env.REACT_APP_TOKEN_MAPBOX || '';
 
@@ -8,6 +10,10 @@ type Coords = {
     lat: string;
     zoom: string;
 };
+
+type CustomMarker = Marker & {
+    id: string;
+}
 
 const useMapbox = (initialPoint: Coords) => {
 
@@ -19,8 +25,47 @@ const useMapbox = (initialPoint: Coords) => {
     }, []);
 
     const map = useRef<Map>();
-
     const [coords, setCoords] = useState<Coords>(initialPoint);
+
+    // Referencia a los marcadores
+    const markers = useRef<any>({});
+
+    // Observables de Rxjs
+    const moveMarker = useRef<Subject<unknown>>(new Subject());
+    const newMarker = useRef<Subject<unknown>>(new Subject());    
+
+    const addMarker = useCallback((event) => {
+
+        const { lng, lat } = event.lngLat;
+        const marker = new Marker() as CustomMarker;
+        marker.id = uuid();
+        marker.setLngLat([lng, lat]);
+        marker.addTo(map.current as Map);
+        marker.setDraggable(true);
+
+        markers.current[marker.id] = marker;
+
+        newMarker.current.next({
+            id: marker.id,
+            lng,
+            lat
+        });
+
+        // Escuchar movimientos del marker
+        marker.on('drag', (event: any) => {
+            
+            const { id } = event?.target;
+            const { lng, lat } = event?.target.getLngLat();
+
+            moveMarker.current.next({
+                id,
+                lng,
+                lat
+            })
+
+        });
+
+    }, []);
 
     useEffect(() => {
         
@@ -33,7 +78,7 @@ const useMapbox = (initialPoint: Coords) => {
 
     }, [initialPoint]);
 
-    // cuando se mueve el mapa
+    // Cuando se mueve el mapa
     useEffect(() => {
         
         map.current?.on('move', (data) => {
@@ -52,10 +97,20 @@ const useMapbox = (initialPoint: Coords) => {
 
     }, []);
 
+    // Agrega marcadores cuando se hace clic
+    useEffect(() => {
+        
+        map.current?.on('click', addMarker);
+
+    }, [addMarker]);
 
     return {
         coords,
-        setRef
+        setRef,
+        markers,
+        addMarker,
+        newMarker$: newMarker.current,
+        moveMarker$: moveMarker.current
     }
 }
 
