@@ -13,7 +13,7 @@ type Coords = {
 
 type CustomMarker = Marker & {
     id: string;
-}
+};
 
 const useMapbox = (initialPoint: Coords) => {
 
@@ -34,22 +34,26 @@ const useMapbox = (initialPoint: Coords) => {
     const moveMarker = useRef<Subject<unknown>>(new Subject());
     const newMarker = useRef<Subject<unknown>>(new Subject());    
 
-    const addMarker = useCallback((event) => {
+    const addMarker = useCallback((event, id?: string) => {
 
-        const { lng, lat } = event.lngLat;
+        const { lng, lat } = event.lngLat || event;
         const marker = new Marker() as CustomMarker;
-        marker.id = uuid();
+
+        marker.id = id ?? uuid();
+
         marker.setLngLat([lng, lat]);
         marker.addTo(map.current as Map);
         marker.setDraggable(true);
 
         markers.current[marker.id] = marker;
 
-        newMarker.current.next({
-            id: marker.id,
-            lng,
-            lat
-        });
+        if (!id) {
+            newMarker.current.next({
+                id: marker.id,
+                lng,
+                lat
+            });
+        }    
 
         // Escuchar movimientos del marker
         marker.on('drag', (event: any) => {
@@ -61,9 +65,16 @@ const useMapbox = (initialPoint: Coords) => {
                 id,
                 lng,
                 lat
-            })
+            });
 
         });
+
+    }, []);
+
+    const updateMarker = useCallback((marker) => {
+        const { id, lng, lat } = marker;
+
+        markers.current[id].setLngLat([lng, lat])
 
     }, []);
 
@@ -110,7 +121,8 @@ const useMapbox = (initialPoint: Coords) => {
         markers,
         addMarker,
         newMarker$: newMarker.current,
-        moveMarker$: moveMarker.current
+        moveMarker$: moveMarker.current,
+        updateMarker
     }
 }
 
